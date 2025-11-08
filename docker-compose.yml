@@ -1,0 +1,176 @@
+version: "3.9"
+
+services:
+  
+  bancho:
+    build:
+      context: ./bancho.py-ex
+      dockerfile: Dockerfile
+    container_name: onl-bancho
+    ports:
+      - ${BANCHO_PORT}:${BANCHO_PORT}
+     #- ${BANCHO_IRC_PORT}:${BANCHO_IRC_PORT}
+      - ${BANCHO_PROMETHEUS_PORT}:${BANCHO_PROMETHEUS_PORT}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    tty: true
+    init: true
+    volumes:
+      - ./.data/bancho:/srv/root/.data
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import socket; s = socket.socket(); s.connect(('${BANCHO_HOST}', int('${BANCHO_PORT}'))); s.close()\" || exit 1"]
+      interval: 5s
+      timeout: 2s
+      retries: 5
+      start_period: 10s
+    environment:
+      - LOCAL_HOST=bancho
+      - APP_HOST=${BANCHO_HOST}
+      - APP_PORT=${BANCHO_PORT}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - DB_NAME=${DB_NAME}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - REDIS_USER=${REDIS_USER}
+      - REDIS_PASS=${REDIS_PASS}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_DB=${REDIS_DB}
+      - FIRST_PLACES_WEBHOOK=${BANCHO_FIRST_PLACES_WEBHOOK_URL}
+      - ENABLE_FIRST_PLACES_WEBHOOK=${BANCHO_FIRST_PLACES_WEBHOOK}
+      - ENABLE_PUBSUBS=true
+      - DISCORD_URL=${BANCHO_DISCORD_URL}
+      - SERVER_NAME=${BANCHO_SERVER_NAME}
+      - DISALLOW_INGAME_RESTRICTION=${BANCHO_INGAME_RESTRICTION}
+      - DISALLOW_INGAME_REGISTRATION=${BANCHO_INGAME_REGISTRATION}
+      - ENABLE_IRC=${BANCHO_IRC}
+      - IRC_HOST=${BANCHO_IRC_HOST}
+      - IRC_PORT=${BANCHO_IRC_PORT}
+      - ENABLE_PROMETHEUS=${BANCHO_PROMETHEUS}
+      - PROMETHEUS_PORT=${BANCHO_PROMETHEUS_PORT}
+      - OSU_API_KEY=${BANCHO_OSU_API_KEY}
+      - MIRROR_SEARCH_ENDPOINT=${MIRROR_SEARCH_ENDPOINT}
+      - MIRROR_DOWNLOAD_ENDPOINT=${MIRROR_DOWNLOAD_ENDPOINT}
+      - DOMAIN=${DOMAIN}
+      - COMMAND_PREFIX=${BANCHO_COMMAND_PREFIX}
+      - SEASONAL_BGS=${BANCHO_BGS}
+      - MENU_ICON_URL=${BANCHO_ICON_URL}
+      - MENU_ONCLICK_URL=${BANCHO_ONCLICK_URL}
+      - DATADOG_API_KEY=${BANCHO_DATADOG_API_KEY}
+      - DATADOG_APP_KEY=${BANCHO_DATADOG_APP_KEY}
+      - PP_CACHED_ACCS=${BANCHO_PP_CACHED_ACCS}
+      - DISALLOWED_NAMES=${BANCHO_DISALLOWED_NAMES}
+      - DISALLOWED_PASSWORDS=${BANCHO_DISALLOWED_PASSWORDS}
+      - DISALLOW_OLD_CLIENTS=${BANCHO_DISALLOW_OLD_CLIENTS}
+      - DISCORD_AUDIT_LOG_WEBHOOK=${BANCHO_AUDIT_LOG_WEBHOOK}
+      - SSL_CERT_PATH=${SSL_CERT_PATH}
+      - SSL_KEY_PATH=${SSL_KEY_PATH}
+      - AUTOMATICALLY_REPORT_PROBLEMS=False
+      - LOG_WITH_COLORS=True
+      - DEVELOPER_MODE=False
+      - DEBUG=False
+      - DATA_DIRECTORY=.data/
+      - REDIRECT_OSU_URLS=True
+
+  shiina:
+    build:
+      context: ./shiina
+      dockerfile: Dockerfile
+    container_name: onl-shiina
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      bancho:
+        condition: service_healthy
+    ports:
+      - "${SHIINA_PORT}:${SHIINA_PORT}"
+    volumes:
+      - ./.data/shiina/data:/app/data
+      - ./.data/shiina/logs:/app/logs
+      - ./.data/shiina/plugins:/app/plugins
+      - ./.data/shiina/.cache:/app/.cache
+      - ./shiina-docs:/app/docs
+      - ./shiina-themes:/app/themes
+      - ./shiina-conf:/app/.config
+      - ./.data/bancho/avatars:/app/avatars
+    environment:
+      HOST: ${SHIINA_HOST}
+      PORT: ${SHIINA_PORT}
+      DBHOST: ${DB_HOST}
+      DBPORT: ${DB_PORT}
+      DBNAME: ${DB_NAME}
+      DBUSER: ${DB_USER}
+      DBPASS: ${DB_PASS}
+      REDISHOST: ${REDIS_HOST}
+      REDISPORT: ${REDIS_PORT}
+      REDISDB: ${REDIS_DB}
+      REDISUSER: ${REDIS_USER}
+      REDISPASS: ${REDIS_PASS}
+
+      DOMAIN: ${PROTOCOL}://${DOMAIN} # or http
+      APIURL: http://bancho:${BANCHO_PORT}
+      APIURLPUBLIC: ${PROTOCOL}://api.${DOMAIN}
+      AVATARSRV: ${PROTOCOL}://a.${DOMAIN}
+      ASSETSURL: ${PROTOCOL}://assets.${DOMAIN}
+
+      EXPUBSUBS: true
+      AVATARFOLDER: avatars/
+      MAXFILESIZE: 1
+      MAXREQUESTSIZE: 2
+      CRON_THREADS: 3
+      TURNSTILE_KEY: ${SHIINA_TURNSTILE_KEY}
+      TURNSTILE_SECRET: ${SHIINA_TURNSTILE_SECRET}
+      REDISTIMEOUT: ${SHIINA_MYSQL_REDIS}
+
+      POOLSIZE: ${SHIINA_MYSQL_POOL}
+      TIMEOUT: ${SHIINA_MYSQL_TIMEOUT}
+      TEMPLATE_UPDATE_DELAY: ${SHIINA_TEMPLATE_UPDATE}
+      MIN_THREADS: ${SHIINA_WEB_MIN_THREADS}
+      MAX_THREADS: ${SHIINA_WEB_MAX_THREADS}
+      TIMEOUT_MS: ${SHIINA_WEB_TIMEOUT}
+
+      DOWNLOAD_MARKETPLACE_PLUGIN: ${SHIINA_MARKETPLACE}
+
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.0
+    container_name: onl-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASS}
+    volumes:
+      - ./.data/mysql:/var/lib/mysql
+      - ./bancho.py-ex/migrations/base.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${DB_USER}", "-p${DB_PASS}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  redis:
+    image: redis:8.2.2
+    container_name: onl-redis
+    command: >
+      sh -c "
+      if [ -n \"$$REDIS_PASS\" ]; then
+        redis-server --save 60 1 --save 300 100 --save 900 1000 --dir /var/lib/redis --requirepass \"$$REDIS_PASS\"
+      else
+        redis-server --save 60 1 --save 300 100 --save 900 1000 --dir /var/lib/redis
+      fi
+      "
+    environment:
+      - REDIS_PASS=${REDIS_PASS}
+    volumes:
+      - ./.data/redis:/var/lib/redis
+    restart: unless-stopped

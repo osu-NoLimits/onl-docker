@@ -1,0 +1,34 @@
+mode: "dark"
+
+# classic, modern, elegant
+theme: "modern"
+
+serverName: "osuNoLimits"
+discordUrl: "https://discord.gg/8Zv6r3Q"
+logoUrl: "/img/onl.png"
+otherLogoUrl: "/img/onlfull.png"
+
+homeDescription: "an unrestricted Sandbox, Cheating, and Testing Server where the possibilities are endless in-game. From embracing the serene realms of Relax Cheats to venturing into uncharted territories"
+homeBigLogoUrl: "/img/biglogo.webp"
+homeVideoUrl: "/video/onl.mp4"
+
+footerDescription: "We believe in granting you the freedom to explore to your heart's content. While we reserve the right to introduce minor restrictions in the future, for now, let your imagination run wild."
+footerCopyright: "© 2025 osuNoLimits.<br>Not affiliated with ppy.sh or osu!"
+footer:
+  - title: "Vote"
+    items:
+      - name: "osu!ServerList"
+        url: "https://osu-server-list.com/server/osunolimits"
+      - name: "TopG"
+        url: "https://topg.org/osu-private-servers/server-662716"
+
+  - title: "Links"
+    items:
+      - name: "Beatmaps"
+        url: "/beatmaps"
+      - name: "Discord"
+        url: "https://discord.gg/8Zv6r3Q"
+      - name: "GitHub"
+        url: "https://github.com/osu-NoLimits/Shiina-Web/tree/main"
+      - name: "Documentation"
+        url: "https://osu-nolimits.github.io/wiki"

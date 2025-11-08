@@ -1,0 +1,5 @@
+# ONL Stack Data
+.env
+.data/
+customization.yml
+logger.env

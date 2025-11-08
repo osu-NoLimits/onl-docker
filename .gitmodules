@@ -3,7 +3,7 @@
 	url = https://github.com/osu-NoLimits/bancho.py-ex.git
 [submodule "shiina"]
 	path = shiina
-	url = https://github.com/osu-NoLimits/shiina.git
+	url = https://github.com/osu-NoLimits/Shiina-Web.git
 [submodule "shiina-docs"]
 	path = shiina-docs
 	url = https://github.com/osu-NoLimits/docs

@@ -8,7 +8,7 @@ services:
     ports:
       - ${BANCHO_PORT}:${BANCHO_PORT}
      #- ${BANCHO_IRC_PORT}:${BANCHO_IRC_PORT}
-      - ${BANCHO_PROMETHEUS_PORT}:${BANCHO_PROMETHEUS_PORT}
+      - 127.0.0.1:${BANCHO_PROMETHEUS_PORT}:${BANCHO_PROMETHEUS_PORT}
     depends_on:
       mysql:
         condition: service_healthy

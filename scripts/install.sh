@@ -384,9 +384,9 @@ read -p "Do you want to secure docker by disabling exposing ports over iptables?
 if [[ "$iptables_confirm" =~ ^[Yy]$ ]]; then
     echo -e "${GREEN}Configuring Docker to disable iptables exposure...${NC}"
     if [ -f "$CONFIG_FILE" ]; then
-        sudo jq '. + {"iptables": false}' "$CONFIG_FILE" > /tmp/daemon.json.tmp && sudo mv /tmp/daemon.json.tmp "$CONFIG_FILE"
+        sudo jq '. + {"iptables": true}' "$CONFIG_FILE" > /tmp/daemon.json.tmp && sudo mv /tmp/daemon.json.tmp "$CONFIG_FILE"
     else
-        echo '{ "iptables": false }' | sudo tee "$CONFIG_FILE" >/dev/null
+        echo '{ "iptables": true }' | sudo tee "$CONFIG_FILE" >/dev/null
     fi
     echo -e "${GREEN}Restarting Docker service...${NC}"
     sudo systemctl restart docker

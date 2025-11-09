@@ -5,6 +5,8 @@ services:
     environment:
       PMA_HOST: ${DB_HOST}
       PMA_PORT: ${DB_PORT}
+      MEMORY_LIMIT: 512M
+      UPLOAD_LIMIT: 500M
     depends_on:
       mysql:
         condition: service_healthy

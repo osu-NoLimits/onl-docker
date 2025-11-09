@@ -329,7 +329,7 @@ upstream pma {
 server {
     listen 80;
     server_name ${pma_subdomain}.${DOMAIN};
-    client_max_body_size 20M;
+    client_max_body_size 500M;
     location / {
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Real-IP  \$remote_addr;
@@ -349,7 +349,7 @@ upstream pma {
 server {
     listen 443 ssl;
     server_name ${pma_subdomain}.${DOMAIN};
-    client_max_body_size 20M;
+    client_max_body_size 500M;
     ssl_certificate     ${SSL_CERT_PATH};
     ssl_certificate_key ${SSL_KEY_PATH};
     ssl_ciphers "EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH:@SECLEVEL=1";

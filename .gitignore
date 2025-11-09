@@ -3,3 +3,6 @@
 .data/
 customization.yml
 logger.env
+
+# Shiina
+shiina-themes/*

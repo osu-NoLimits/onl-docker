@@ -110,8 +110,8 @@ DOMAIN=$(grep '^DOMAIN=' .env | cut -d '=' -f2)
 FLEXIBLE=$(grep '^FLEXIBLE=' .env | cut -d '=' -f2)
 BANCHO_PORT=$(grep '^BANCHO_PORT=' .env | cut -d '=' -f2)
 SHIINA_PORT=$(grep '^SHIINA_PORT=' .env | cut -d '=' -f2)
-SSL_CERT_PATH="/etc/letsencrypt/live/$DOMAIN/fullchain.pem"
-SSL_KEY_PATH="/etc/letsencrypt/live/$DOMAIN/privkey.pem"
+SSL_CERT_PATH=$(grep '^SSL_CERT_PATH=' .env | cut -d '=' -f2)
+SSL_KEY_PATH=$(grep '^SSL_KEY_PATH=' .env | cut -d '=' -f2)
 
 echo -e "${GREEN}Your DOMAIN is set to: ${DOMAIN}${NC}"
 echo -e "${GREEN}Your FLEXIBLE SSL setting is set to: ${FLEXIBLE}${NC}"

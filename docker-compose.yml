@@ -92,7 +92,6 @@ services:
       - ./.data/shiina/data:/app/data
       - ./.data/shiina/logs:/app/logs
       - ./.data/shiina/plugins:/app/plugins
-      - ./.data/shiina/.cache:/app/.cache
       - ./shiina-docs:/app/docs
       - ./shiina-themes:/app/themes
       - ./shiina-conf:/app/.config
@@ -119,8 +118,8 @@ services:
 
       EXPUBSUBS: true
       AVATARFOLDER: avatars/
-      MAXFILESIZE: 1
-      MAXREQUESTSIZE: 2
+      MAXFILESIZE: 5
+      MAXREQUESTSIZE: 4
       CRON_THREADS: 3
       TURNSTILE_KEY: ${SHIINA_TURNSTILE_KEY}
       TURNSTILE_SECRET: ${SHIINA_TURNSTILE_SECRET}

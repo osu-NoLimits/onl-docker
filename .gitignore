@@ -4,5 +4,8 @@
 customization.yml
 logger.env
 
+# Extra modules
+docker-compose.override.yml
+
 # Shiina
 shiina-themes/*

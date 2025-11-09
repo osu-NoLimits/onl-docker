@@ -110,6 +110,7 @@ DOMAIN=$(grep '^DOMAIN=' .env | cut -d '=' -f2)
 FLEXIBLE=$(grep '^FLEXIBLE=' .env | cut -d '=' -f2)
 BANCHO_PORT=$(grep '^BANCHO_PORT=' .env | cut -d '=' -f2)
 SHIINA_PORT=$(grep '^SHIINA_PORT=' .env | cut -d '=' -f2)
+PMA_PORT=$(grep '^PMA_PORT=' .env | cut -d '=' -f2)
 SSL_CERT_PATH=$(grep '^SSL_CERT_PATH=' .env | cut -d '=' -f2)
 SSL_KEY_PATH=$(grep '^SSL_KEY_PATH=' .env | cut -d '=' -f2)
 
@@ -305,6 +306,61 @@ fi
 
 sudo ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/
 
+# Ask if user wants to have phpmmyadmin installed   
+read -p "Do you want to install phpMyAdmin? (y/N): " pma_confirm
+if [[ "$pma_confirm" =~ ^[Yy]$ ]]; then
+    cp scripts/install/docker-compose.override.yml docker-compose.override.yml
+    echo -e "${GREEN}✅ phpMyAdmin Docker configuration added.${NC}"
+
+    read -p "What should be the name of your subdomain for phpMyAdmin? " pma_subdomain
+
+    NGINX_CONF="${NGINX_CONF_DIR}/${pma_subdomain}.${DOMAIN}.conf"
+
+    sudo rm -f "$NGINX_CONF"
+    sudo rm -f "/etc/nginx/sites-enabled/${pma_subdomain}.${DOMAIN}.conf"
+
+    if [ "$FLEXIBLE" = "true" ]; then
+        # HTTP-only (no SSL)
+        sudo tee "$NGINX_CONF" > /dev/null <<EOF
+server {
+    listen 80;
+    server_name ${pma_subdomain}.${DOMAIN};
+    client_max_body_size 20M;
+    location / {
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Real-IP  \$remote_addr;
+        proxy_set_header Host \$http_host;
+        proxy_redirect off;
+        proxy_pass http://127.0.0.1:${PMA_PORT};
+    }
+}
+EOF
+    else
+        # SSL configuration
+        sudo tee "$NGINX_CONF" > /dev/null <<EOF
+server {
+    listen 443 ssl;
+    server_name ${pma_subdomain}.${DOMAIN};
+    client_max_body_size 20M;
+    ssl_certificate     ${SSL_CERT_PATH};
+    ssl_certificate_key ${SSL_KEY_PATH};
+    ssl_ciphers "EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH:@SECLEVEL=1";
+    location / {
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Real-IP  \$remote_addr;
+        proxy_set_header Host \$http_host;
+        proxy_redirect off;
+        proxy_pass http://127.0.0.1:${PMA_PORT};
+    }
+}
+EOF
+    fi
+    sudo ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/
+    echo -e "${GREEN}✅ phpMyAdmin Nginx configuration created.${NC}"
+else
+    echo -e "${YELLOW}Skipping phpMyAdmin installation.${NC}"
+fi
+
 echo -e "${GREEN}Testing Nginx configuration...${NC}"
 if sudo nginx -t; then
     sudo systemctl reload nginx
@@ -313,5 +369,23 @@ else
     echo -e "${RED}❌ Nginx configuration test failed.${NC}"
     exit 1
 fi
+
+CONFIG_FILE="/etc/docker/daemon.json"
+read -p "Do you want to secure docker by disabling exposing ports over iptables? (y/N): " iptables_confirm
+
+if [[ "$iptables_confirm" =~ ^[Yy]$ ]]; then
+    echo -e "${GREEN}Configuring Docker to disable iptables exposure...${NC}"
+    if [ -f "$CONFIG_FILE" ]; then
+        sudo jq '. + {"iptables": false}' "$CONFIG_FILE" > /tmp/daemon.json.tmp && sudo mv /tmp/daemon.json.tmp "$CONFIG_FILE"
+    else
+        echo '{ "iptables": false }' | sudo tee "$CONFIG_FILE" >/dev/null
+    fi
+    echo -e "${GREEN}Restarting Docker service...${NC}"
+    sudo systemctl restart docker
+    echo -e "${GREEN}Docker configured to disable iptables exposure.${NC}"
+else
+    echo -e "${YELLOW}Skipping Docker iptables configuration.${NC}"
+fi
+
 
 echo -e "${GREEN}Finished installing onl-docker to your machine.${NC}"

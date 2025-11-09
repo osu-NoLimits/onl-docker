@@ -322,6 +322,10 @@ if [[ "$pma_confirm" =~ ^[Yy]$ ]]; then
     if [ "$FLEXIBLE" = "true" ]; then
         # HTTP-only (no SSL)
         sudo tee "$NGINX_CONF" > /dev/null <<EOF
+upstream pma {
+    server 127.0.0.1:${PMA_PORT};
+}
+
 server {
     listen 80;
     server_name ${pma_subdomain}.${DOMAIN};
@@ -331,13 +335,17 @@ server {
         proxy_set_header X-Real-IP  \$remote_addr;
         proxy_set_header Host \$http_host;
         proxy_redirect off;
-        proxy_pass http://127.0.0.1:${PMA_PORT};
+        proxy_pass http://pma;
     }
 }
 EOF
     else
         # SSL configuration
         sudo tee "$NGINX_CONF" > /dev/null <<EOF
+upstream pma {
+    server 127.0.0.1:${PMA_PORT};
+}
+
 server {
     listen 443 ssl;
     server_name ${pma_subdomain}.${DOMAIN};

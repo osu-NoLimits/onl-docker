@@ -1,0 +1,13 @@
+services:
+  pma:
+    image: phpmyadmin:5.2.1
+    container_name: onl-pma
+    environment:
+      PMA_HOST: ${DB_HOST}
+      PMA_PORT: ${DB_PORT}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - ${PMA_PORT}:80
+    restart: unless-stopped

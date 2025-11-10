@@ -3,6 +3,9 @@
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
 NC='\033[0m' # No Color
 
 # Detect package manager
@@ -46,43 +49,53 @@ else
     exit 1
 fi
 
-echo -e "${GREEN}Detected package manager: ${PKG_MANAGER}${NC}"
-echo -e "${GREEN}Starting onl stack installation...${NC}"
+echo ""
+echo -e "${CYAN}═══════════════════════════════════════════════════════${NC}"
+echo -e "${BOLD}${CYAN}      ONL Stack Installation Script${NC}"
+echo -e "${CYAN}═══════════════════════════════════════════════════════${NC}"
+echo ""
 
-echo -e "${GREEN}Initializing git submodules...${NC}"
+echo -e "${BLUE}▶ Detected package manager:${NC} ${BOLD}${PKG_MANAGER}${NC}"
+echo ""
+
+echo -e "${BLUE}▶ Initializing git submodules...${NC}"
 git submodule update --init --recursive
 
-echo -e "${GREEN}Building Docker images...${NC}"
+echo ""
+echo -e "${BLUE}▶ Building Docker images...${NC}"
 make build
 
-echo -e "${GREEN}Checking for Apache2...${NC}"
+echo ""
+echo -e "${BLUE}▶ Checking for Apache2...${NC}"
 if eval "$CHECK_APACHE_CMD"; then
-    echo -e "${YELLOW}Apache2 is detected on this system.${NC}"
+    echo -e "${YELLOW}⚠ Apache2 is detected on this system.${NC}"
     read -p "Do you want to remove Apache2? (y/N): " confirm
     if [[ "$confirm" =~ ^[Yy]$ ]]; then
-        echo -e "${RED}Removing Apache2...${NC}"
+        echo -e "${YELLOW}Removing Apache2...${NC}"
         sudo systemctl stop apache2 2>/dev/null || sudo systemctl stop httpd 2>/dev/null
         eval "$REMOVE_CMD apache2 || $REMOVE_CMD httpd"
         eval "$AUTOREMOVE_CMD"
-        echo -e "${GREEN}Apache2 removed successfully.${NC}"
+        echo -e "${GREEN}✅ Apache2 removed successfully.${NC}"
     else
-        echo -e "${YELLOW}Skipping Apache2 removal.${NC}"
+        echo -e "${YELLOW}⊘ Skipping Apache2 removal.${NC}"
     fi
 else
-    echo -e "${GREEN}Apache2 not found.${NC}"
+    echo -e "${GREEN}✓ Apache2 not found.${NC}"
 fi
 
-echo -e "${GREEN}Installing Nginx...${NC}"
+echo ""
+echo -e "${BLUE}▶ Installing Nginx...${NC}"
 if ! command -v nginx >/dev/null 2>&1; then
-    echo -e "${RED}Nginx not found. Installing...${NC}"
+    echo -e "${YELLOW}Nginx not found. Installing...${NC}"
     eval "$UPDATE_CMD"
     eval "$INSTALL_CMD nginx"
-    echo -e "${GREEN}Nginx installed successfully.${NC}"
+    echo -e "${GREEN}✅ Nginx installed successfully.${NC}"
 else
-    echo -e "${GREEN}Nginx is already installed.${NC}"
+    echo -e "${GREEN}✓ Nginx is already installed.${NC}"
 fi
 
-echo -e "${GREEN}Ensuring nginx is enabled and running...${NC}"
+echo ""
+echo -e "${BLUE}▶ Ensuring nginx is enabled and running...${NC}"
 sudo systemctl enable nginx 2>/dev/null || true
 sudo systemctl start nginx 2>/dev/null || true
 
@@ -92,17 +105,20 @@ else
     echo -e "${RED}❌ Nginx failed to start. Check logs with: sudo journalctl -u nginx${NC}"
 fi
 
+echo ""
+echo -e "${BLUE}▶ Checking .env configuration...${NC}"
 if [ -f .env ]; then
-    echo -e "${YELLOW}.env file detected.${NC}"
+    echo -e "${YELLOW}⚠ .env file detected.${NC}"
     read -p "Did you update your .env keys (SSL, DOMAIN, etc.) before continuing? (y/N): " env_confirm
     if [[ ! "$env_confirm" =~ ^[Yy]$ ]]; then
-        echo -e "${YELLOW}Please make sure your .env keys are up to date before starting installation (DOMAIN, FLEXIBLE, CERTS).${NC}"
+        echo -e "${RED}❌ Please update your .env keys before starting installation (DOMAIN, FLEXIBLE, CERTS).${NC}"
         exit 1
     else
-        echo -e "${GREEN}.env keys confirmed as updated.${NC}"
+        echo -e "${GREEN}✓ .env keys confirmed as updated.${NC}"
     fi
 else
-    echo -e "${YELLOW}No .env file detected. Copy .env.example to .env and update it accordingly.${NC}"
+    echo -e "${RED}❌ No .env file detected.${NC}"
+    echo -e "${YELLOW}Please copy .env.example to .env and update it accordingly.${NC}"
     exit 1
 fi
 
@@ -114,30 +130,39 @@ PMA_PORT=$(grep '^PMA_PORT=' .env | cut -d '=' -f2)
 SSL_CERT_PATH=$(grep '^SSL_CERT_PATH=' .env | cut -d '=' -f2)
 SSL_KEY_PATH=$(grep '^SSL_KEY_PATH=' .env | cut -d '=' -f2)
 
-echo -e "${GREEN}Your DOMAIN is set to: ${DOMAIN}${NC}"
-echo -e "${GREEN}Your FLEXIBLE SSL setting is set to: ${FLEXIBLE}${NC}"
+echo ""
+echo -e "${CYAN}───────────────────────────────────────────────────────${NC}"
+echo -e "${BOLD}Configuration Summary:${NC}"
+echo -e "  ${BLUE}Domain:${NC} ${BOLD}${DOMAIN}${NC}"
+echo -e "  ${BLUE}Flexible SSL:${NC} ${BOLD}${FLEXIBLE}${NC}"
+echo -e "${CYAN}───────────────────────────────────────────────────────${NC}"
+echo ""
 
 if [ "$FLEXIBLE" = "true" ]; then
-    echo -e "${GREEN}Flexible SSL is enabled. Skipping SSL certificate check.${NC}"
+    echo -e "${YELLOW}⚠ Flexible SSL is enabled. Skipping SSL certificate check.${NC}"
     NGINX_PORT=80
 else
-    echo -e "${GREEN}Checking for SSL certificates...${NC}"
+    echo -e "${BLUE}▶ Checking for SSL certificates...${NC}"
     if [ -f "$SSL_CERT_PATH" ] && [ -f "$SSL_KEY_PATH" ]; then
         echo -e "${GREEN}✅ SSL certificates found.${NC}"
         NGINX_PORT="443 ssl"
     else
-        echo -e "${RED}❌ SSL certificates not found at $SSL_CERT_PATH and $SSL_KEY_PATH.${NC}"
-        echo -e "${YELLOW}Please obtain valid SSL certificates for your domain before proceeding.${NC}"
+        echo -e "${RED}❌ SSL certificates not found at:${NC}"
+        echo -e "   ${YELLOW}Cert: $SSL_CERT_PATH${NC}"
+        echo -e "   ${YELLOW}Key: $SSL_KEY_PATH${NC}"
+        echo -e "${RED}Please obtain valid SSL certificates for your domain before proceeding.${NC}"
         exit 1
     fi
 fi
 
 DATA_DIRECTORY=$(pwd)/.data
-echo -e "${GREEN}Files: $DATA_DIRECTORY${NC}"
+echo ""
+echo -e "${BLUE}▶ Setting up data directory...${NC}"
+echo -e "  ${BLUE}Files:${NC} ${DATA_DIRECTORY}"
 
 NGINX_LOG_DIRECTORY="$DATA_DIRECTORY/nginx"
 mkdir -p "$NGINX_LOG_DIRECTORY"
-echo -e "${GREEN}Nginx logs will be stored in: $NGINX_LOG_DIRECTORY${NC}"
+echo -e "  ${BLUE}Nginx logs:${NC} ${NGINX_LOG_DIRECTORY}"
 
 # --- Auto-detect Nginx configuration path ---
 if [ -d /etc/nginx/sites-available ]; then
@@ -148,13 +173,12 @@ else
     NGINX_CONF_DIR="/etc/nginx"
 fi
 
-echo -e "${GREEN}Detected Nginx configuration directory: ${NGINX_CONF_DIR}${NC}"
+echo -e "  ${BLUE}Nginx config:${NC} ${NGINX_CONF_DIR}"
+echo -e "  ${BLUE}Nginx port:${NC} ${NGINX_PORT}"
 
-echo -e "${GREEN}Set NGINX_PORT as ${NGINX_PORT}.${NC}"
-
+echo ""
+echo -e "${BLUE}▶ Creating Nginx configuration...${NC}"
 NGINX_CONF="${NGINX_CONF_DIR}/${DOMAIN}.conf"
-
-echo -e "${GREEN}Creating ${NGINX_CONF}...${NC}"
 
 # Remove old configuration if it exists
 sudo rm -f "$NGINX_CONF"
@@ -333,7 +357,10 @@ EOF
 fi
 
 sudo ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/
+echo -e "${GREEN}✅ Main Nginx configuration created.${NC}"
 
+echo ""
+echo -e "${BLUE}▶ phpMyAdmin setup...${NC}"
 # Ask if user wants to have phpmmyadmin installed   
 read -p "Do you want to install phpMyAdmin? (y/N): " pma_confirm
 if [[ "$pma_confirm" =~ ^[Yy]$ ]]; then
@@ -402,10 +429,11 @@ EOF
     sudo ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/
     echo -e "${GREEN}✅ phpMyAdmin Nginx configuration created.${NC}"
 else
-    echo -e "${YELLOW}Skipping phpMyAdmin installation.${NC}"
+    echo -e "${YELLOW}⊘ Skipping phpMyAdmin installation.${NC}"
 fi
 
-echo -e "${GREEN}Setting up log rotation for nginx logs...${NC}"
+echo ""
+echo -e "${BLUE}▶ Setting up log rotation for nginx logs...${NC}"
 LOGROTATE_CONF="/etc/logrotate.d/onl-nginx"
 sudo tee "$LOGROTATE_CONF" > /dev/null <<EOF
 ${NGINX_LOG_DIRECTORY}/*.log {
@@ -428,7 +456,8 @@ ${NGINX_LOG_DIRECTORY}/*.log {
 EOF
 echo -e "${GREEN}✅ Log rotation configured. Logs will be rotated daily and kept for 30 days.${NC}"
 
-echo -e "${GREEN}Testing Nginx configuration...${NC}"
+echo ""
+echo -e "${BLUE}▶ Testing Nginx configuration...${NC}"
 if sudo nginx -t; then
     sudo systemctl reload nginx
     echo -e "${GREEN}✅ Nginx reloaded successfully.${NC}"
@@ -437,22 +466,30 @@ else
     exit 1
 fi
 
+echo ""
+echo -e "${BLUE}▶ Docker security configuration...${NC}"
 CONFIG_FILE="/etc/docker/daemon.json"
 read -p "Do you want to secure docker by disabling exposing ports over iptables? (y/N): " iptables_confirm
 
 if [[ "$iptables_confirm" =~ ^[Yy]$ ]]; then
-    echo -e "${GREEN}Configuring Docker to disable iptables exposure...${NC}"
+    echo -e "${YELLOW}Configuring Docker to disable iptables exposure...${NC}"
     if [ -f "$CONFIG_FILE" ]; then
         sudo jq '. + {"iptables": true}' "$CONFIG_FILE" > /tmp/daemon.json.tmp && sudo mv /tmp/daemon.json.tmp "$CONFIG_FILE"
     else
         echo '{ "iptables": true }' | sudo tee "$CONFIG_FILE" >/dev/null
     fi
-    echo -e "${GREEN}Restarting Docker service...${NC}"
+    echo -e "${YELLOW}Restarting Docker service...${NC}"
     sudo systemctl restart docker
-    echo -e "${GREEN}Docker configured to disable iptables exposure.${NC}"
+    echo -e "${GREEN}✅ Docker configured to disable iptables exposure.${NC}"
 else
-    echo -e "${YELLOW}Skipping Docker iptables configuration.${NC}"
+    echo -e "${YELLOW}⊘ Skipping Docker iptables configuration.${NC}"
 fi
 
-
-echo -e "${GREEN}Finished installing onl-docker to your machine.${NC}"
+echo ""
+echo -e "${CYAN}═══════════════════════════════════════════════════════${NC}"
+echo -e "${BOLD}${GREEN}✅ Installation completed successfully!${NC}"
+echo -e "${CYAN}═══════════════════════════════════════════════════════${NC}"
+echo ""
+echo -e "${BOLD}Next step:${NC}"
+echo -e "  Start the stack: ${CYAN}make run${NC}"
+echo ""

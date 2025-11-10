@@ -135,6 +135,10 @@ fi
 DATA_DIRECTORY=$(pwd)/.data
 echo -e "${GREEN}Files: $DATA_DIRECTORY${NC}"
 
+NGINX_LOG_DIRECTORY="$DATA_DIRECTORY/nginx"
+mkdir -p "$NGINX_LOG_DIRECTORY"
+echo -e "${GREEN}Nginx logs will be stored in: $NGINX_LOG_DIRECTORY${NC}"
+
 # --- Auto-detect Nginx configuration path ---
 if [ -d /etc/nginx/sites-available ]; then
     NGINX_CONF_DIR="/etc/nginx/sites-available"
@@ -176,6 +180,9 @@ server {
 	server_name c.${DOMAIN} ce.${DOMAIN} c4.${DOMAIN} osu.${DOMAIN} b.${DOMAIN} api.${DOMAIN};
 	client_max_body_size 20M;
 
+    access_log ${NGINX_LOG_DIRECTORY}/bancho_access.log;
+    error_log ${NGINX_LOG_DIRECTORY}/bancho_error.log;
+
 	location / {
 		proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
 		proxy_set_header X-Real-IP  \$remote_addr;
@@ -191,6 +198,9 @@ server {
 	server_name ${DOMAIN};
 	client_max_body_size 20M;
 
+    access_log ${NGINX_LOG_DIRECTORY}/shiina_access.log;
+    error_log ${NGINX_LOG_DIRECTORY}/shiina_error.log;
+
 	location / {
 		proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
 		proxy_set_header X-Real-IP  \$remote_addr;
@@ -205,6 +215,9 @@ server {
 	listen 80;
 	server_name assets.${DOMAIN};
 
+    access_log ${NGINX_LOG_DIRECTORY}/assets_access.log;
+    error_log ${NGINX_LOG_DIRECTORY}/assets_error.log;
+
 	location / {
 		default_type image/png;
 		root ${DATA_DIRECTORY}/bancho/assets;
@@ -214,6 +227,9 @@ server {
 server {
 	listen 80;
 	server_name a.${DOMAIN};
+
+    access_log ${NGINX_LOG_DIRECTORY}/avatars_access.log;
+    error_log ${NGINX_LOG_DIRECTORY}/avatars_error.log;
 
 	location / {
 		root ${DATA_DIRECTORY}/bancho/avatars;
@@ -245,6 +261,9 @@ server {
 	ssl_certificate_key ${SSL_KEY_PATH};
 	ssl_ciphers "EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH:@SECLEVEL=1";
 
+    access_log ${NGINX_LOG_DIRECTORY}/bancho_access.log;
+    error_log ${NGINX_LOG_DIRECTORY}/bancho_error.log;
+
 	location / {
 		proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
 		proxy_set_header X-Real-IP  \$remote_addr;
@@ -264,6 +283,9 @@ server {
 	ssl_certificate_key ${SSL_KEY_PATH};
 	ssl_ciphers "EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH:@SECLEVEL=1";
 
+    access_log ${NGINX_LOG_DIRECTORY}/shiina_access.log;
+    error_log ${NGINX_LOG_DIRECTORY}/shiina_error.log;
+
 	location / {
 		proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
 		proxy_set_header X-Real-IP  \$remote_addr;
@@ -282,6 +304,9 @@ server {
 	ssl_certificate_key ${SSL_KEY_PATH};
 	ssl_ciphers "EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH:@SECLEVEL=1";
 
+    access_log ${NGINX_LOG_DIRECTORY}/assets_access.log;
+    error_log ${NGINX_LOG_DIRECTORY}/assets_error.log;
+
 	location / {
 		default_type image/png;
 		root ${DATA_DIRECTORY}/bancho/assets;
@@ -295,6 +320,9 @@ server {
 	ssl_certificate     ${SSL_CERT_PATH};
 	ssl_certificate_key ${SSL_KEY_PATH};
 	ssl_ciphers "EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH:@SECLEVEL=1";
+
+    access_log ${NGINX_LOG_DIRECTORY}/avatars_access.log;
+    error_log ${NGINX_LOG_DIRECTORY}/avatars_error.log;
 
 	location / {
 		root ${DATA_DIRECTORY}/bancho/avatars;
@@ -330,6 +358,10 @@ server {
     listen 80;
     server_name ${pma_subdomain}.${DOMAIN};
     client_max_body_size 500M;
+
+    access_log ${NGINX_LOG_DIRECTORY}/pma_access.log;
+    error_log ${NGINX_LOG_DIRECTORY}/pma_error.log;
+
     location / {
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Real-IP  \$remote_addr;
@@ -353,6 +385,10 @@ server {
     ssl_certificate     ${SSL_CERT_PATH};
     ssl_certificate_key ${SSL_KEY_PATH};
     ssl_ciphers "EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH:@SECLEVEL=1";
+
+    access_log ${NGINX_LOG_DIRECTORY}/pma_access.log;
+    error_log ${NGINX_LOG_DIRECTORY}/pma_error.log;
+
     location / {
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Real-IP  \$remote_addr;
@@ -368,6 +404,29 @@ EOF
 else
     echo -e "${YELLOW}Skipping phpMyAdmin installation.${NC}"
 fi
+
+echo -e "${GREEN}Setting up log rotation for nginx logs...${NC}"
+LOGROTATE_CONF="/etc/logrotate.d/onl-nginx"
+sudo tee "$LOGROTATE_CONF" > /dev/null <<EOF
+${NGINX_LOG_DIRECTORY}/*.log {
+    daily
+    missingok
+    rotate 30
+    compress
+    delaycompress
+    notifempty
+    create 0640 www-data adm
+    dateext
+    dateformat -%Y%m%d
+    sharedscripts
+    postrotate
+        if [ -f /var/run/nginx.pid ]; then
+            kill -USR1 \$(cat /var/run/nginx.pid)
+        fi
+    endscript
+}
+EOF
+echo -e "${GREEN}✅ Log rotation configured. Logs will be rotated daily and kept for 30 days.${NC}"
 
 echo -e "${GREEN}Testing Nginx configuration...${NC}"
 if sudo nginx -t; then

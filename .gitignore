@@ -3,6 +3,7 @@
 .data/
 customization.yml
 logger.env
+caps.json
 
 # Extra modules
 /docker-compose.override.yml

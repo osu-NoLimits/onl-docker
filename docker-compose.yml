@@ -18,6 +18,7 @@ services:
     init: true
     volumes:
       - ./.data/bancho:/srv/root/.data
+      - ./.config:/srv/root/.config
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import socket; s = socket.socket(); s.connect(('${BANCHO_HOST}', int('${BANCHO_PORT}'))); s.close()\" || exit 1"]
       interval: 5s
@@ -94,7 +95,7 @@ services:
       - ./.data/shiina/plugins:/app/plugins
       - ./shiina-docs:/app/docs
       - ./shiina-themes:/app/themes
-      - ./shiina-conf:/app/.config
+      - ./.config:/app/.config
       - ./.data/bancho/avatars:/app/avatars
     environment:
       HOST: ${SHIINA_HOST}

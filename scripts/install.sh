@@ -55,6 +55,14 @@ echo -e "${BOLD}${CYAN}      ONL Stack Installation Script${NC}"
 echo -e "${CYAN}═══════════════════════════════════════════════════════${NC}"
 echo ""
 
+# Migration if shiina-conf folder exists, copy all missing files to .config
+if [ -d "shiina-conf" ]; then
+    echo -e "${YELLOW}⚠ Detected old shiina-conf directory. Migrating to .config...${NC}"
+    mkdir -p .config
+    cp -n shiina-conf/* .config/ 2>/dev/null || true
+    echo -e "${GREEN}✓ Migration completed. Missing files copied to .config${NC}"
+fi
+
 echo -e "${BLUE}▶ Detected package manager:${NC} ${BOLD}${PKG_MANAGER}${NC}"
 echo ""
 

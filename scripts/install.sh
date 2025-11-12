@@ -75,7 +75,7 @@ if eval "$CHECK_APACHE_CMD"; then
         sudo systemctl stop apache2 2>/dev/null || sudo systemctl stop httpd 2>/dev/null
         eval "$REMOVE_CMD apache2 || $REMOVE_CMD httpd"
         eval "$AUTOREMOVE_CMD"
-        echo -e "${GREEN}✅ Apache2 removed successfully.${NC}"
+        echo -e "${GREEN}✓ Apache2 removed successfully.${NC}"
     else
         echo -e "${YELLOW}⊘ Skipping Apache2 removal.${NC}"
     fi
@@ -89,7 +89,7 @@ if ! command -v nginx >/dev/null 2>&1; then
     echo -e "${YELLOW}Nginx not found. Installing...${NC}"
     eval "$UPDATE_CMD"
     eval "$INSTALL_CMD nginx"
-    echo -e "${GREEN}✅ Nginx installed successfully.${NC}"
+    echo -e "${GREEN}✓ Nginx installed successfully.${NC}"
 else
     echo -e "${GREEN}✓ Nginx is already installed.${NC}"
 fi
@@ -100,9 +100,9 @@ sudo systemctl enable nginx 2>/dev/null || true
 sudo systemctl start nginx 2>/dev/null || true
 
 if systemctl is-active --quiet nginx; then
-    echo -e "${GREEN}✅ Nginx is running.${NC}"
+    echo -e "${GREEN}✓ Nginx is running.${NC}"
 else
-    echo -e "${RED}❌ Nginx failed to start. Check logs with: sudo journalctl -u nginx${NC}"
+    echo -e "${RED}⚠ Nginx failed to start. Check logs with: sudo journalctl -u nginx${NC}"
 fi
 
 echo ""
@@ -111,13 +111,13 @@ if [ -f .env ]; then
     echo -e "${YELLOW}⚠ .env file detected.${NC}"
     read -p "Did you update your .env keys (SSL, DOMAIN, etc.) before continuing? (y/N): " env_confirm
     if [[ ! "$env_confirm" =~ ^[Yy]$ ]]; then
-        echo -e "${RED}❌ Please update your .env keys before starting installation (DOMAIN, FLEXIBLE, CERTS).${NC}"
+        echo -e "${RED}⚠ Please update your .env keys before starting installation (DOMAIN, FLEXIBLE, CERTS).${NC}"
         exit 1
     else
         echo -e "${GREEN}✓ .env keys confirmed as updated.${NC}"
     fi
 else
-    echo -e "${RED}❌ No .env file detected.${NC}"
+    echo -e "${RED}⚠ No .env file detected.${NC}"
     echo -e "${YELLOW}Please copy .env.example to .env and update it accordingly.${NC}"
     exit 1
 fi
@@ -144,10 +144,10 @@ if [ "$FLEXIBLE" = "true" ]; then
 else
     echo -e "${BLUE}▶ Checking for SSL certificates...${NC}"
     if [ -f "$SSL_CERT_PATH" ] && [ -f "$SSL_KEY_PATH" ]; then
-        echo -e "${GREEN}✅ SSL certificates found.${NC}"
+        echo -e "${GREEN}✓ SSL certificates found.${NC}"
         NGINX_PORT="443 ssl"
     else
-        echo -e "${RED}❌ SSL certificates not found at:${NC}"
+        echo -e "${RED}⚠ SSL certificates not found at:${NC}"
         echo -e "   ${YELLOW}Cert: $SSL_CERT_PATH${NC}"
         echo -e "   ${YELLOW}Key: $SSL_KEY_PATH${NC}"
         echo -e "${RED}Please obtain valid SSL certificates for your domain before proceeding.${NC}"
@@ -357,7 +357,7 @@ EOF
 fi
 
 sudo ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/
-echo -e "${GREEN}✅ Main Nginx configuration created.${NC}"
+echo -e "${GREEN}✓ Main Nginx configuration created.${NC}"
 
 echo ""
 echo -e "${BLUE}▶ phpMyAdmin setup...${NC}"
@@ -365,7 +365,7 @@ echo -e "${BLUE}▶ phpMyAdmin setup...${NC}"
 read -p "Do you want to install phpMyAdmin? (y/N): " pma_confirm
 if [[ "$pma_confirm" =~ ^[Yy]$ ]]; then
     cp scripts/install/docker-compose.override.yml docker-compose.override.yml
-    echo -e "${GREEN}✅ phpMyAdmin Docker configuration added.${NC}"
+    echo -e "${GREEN}✓ phpMyAdmin Docker configuration added.${NC}"
 
     read -p "What should be the name of your subdomain for phpMyAdmin? " pma_subdomain
 
@@ -427,7 +427,7 @@ server {
 EOF
     fi
     sudo ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/
-    echo -e "${GREEN}✅ phpMyAdmin Nginx configuration created.${NC}"
+    echo -e "${GREEN}✓ phpMyAdmin Nginx configuration created.${NC}"
 else
     echo -e "${YELLOW}⊘ Skipping phpMyAdmin installation.${NC}"
 fi
@@ -435,6 +435,10 @@ fi
 echo ""
 echo -e "${BLUE}▶ Setting up log rotation for nginx logs...${NC}"
 LOGROTATE_CONF="/etc/logrotate.d/onl-nginx"
+
+# Create old directory for rotated logs
+mkdir -p "$NGINX_LOG_DIRECTORY/old"
+
 sudo tee "$LOGROTATE_CONF" > /dev/null <<EOF
 ${NGINX_LOG_DIRECTORY}/*.log {
     daily
@@ -445,7 +449,9 @@ ${NGINX_LOG_DIRECTORY}/*.log {
     notifempty
     create 0640 www-data adm
     dateext
-    dateformat -%Y%m%d
+    dateformat -%Y-%m-%d
+    extension .log
+    olddir ${NGINX_LOG_DIRECTORY}/old
     sharedscripts
     postrotate
         if [ -f /var/run/nginx.pid ]; then
@@ -454,15 +460,15 @@ ${NGINX_LOG_DIRECTORY}/*.log {
     endscript
 }
 EOF
-echo -e "${GREEN}✅ Log rotation configured. Logs will be rotated daily and kept for 30 days.${NC}"
+echo -e "${GREEN}✓ Log rotation configured. Logs will be rotated daily and kept for 30 days.${NC}"
 
 echo ""
 echo -e "${BLUE}▶ Testing Nginx configuration...${NC}"
 if sudo nginx -t; then
     sudo systemctl reload nginx
-    echo -e "${GREEN}✅ Nginx reloaded successfully.${NC}"
+    echo -e "${GREEN}✓ Nginx reloaded successfully.${NC}"
 else
-    echo -e "${RED}❌ Nginx configuration test failed.${NC}"
+    echo -e "${RED}⚠ Nginx configuration test failed.${NC}"
     exit 1
 fi
 
@@ -480,14 +486,14 @@ if [[ "$iptables_confirm" =~ ^[Yy]$ ]]; then
     fi
     echo -e "${YELLOW}Restarting Docker service...${NC}"
     sudo systemctl restart docker
-    echo -e "${GREEN}✅ Docker configured to disable iptables exposure.${NC}"
+    echo -e "${GREEN}✓ Docker configured to disable iptables exposure.${NC}"
 else
-    echo -e "${YELLOW}⊘ Skipping Docker iptables configuration.${NC}"
+    echo -e "${YELLOW}⚠ Skipping Docker iptables configuration.${NC}"
 fi
 
 echo ""
 echo -e "${CYAN}═══════════════════════════════════════════════════════${NC}"
-echo -e "${BOLD}${GREEN}✅ Installation completed successfully!${NC}"
+echo -e "${BOLD}${GREEN}✓ Installation completed successfully!${NC}"
 echo -e "${CYAN}═══════════════════════════════════════════════════════${NC}"
 echo ""
 echo -e "${BOLD}Next step:${NC}"
